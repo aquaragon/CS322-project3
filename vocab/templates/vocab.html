@@ -73,32 +73,89 @@
          <br />
          <div class="row">
             <div class="col-xs-6 text-center">
-               <form id="entry" method="POST" action="/_check">
+               <form id="entry">
                   <label for="attempt">Word:</label>
                   <input id="attempt" name="attempt" type="text" width="15"
                      autocomplete="off"  autofocus />
-                  <input type="submit" name="try" />
                </form>
             </div>
          </div>
          <br />
-         {% if session.matches|length is not equalto 0  %}
-         <h2>You found </h2>
-         <p id="results">
-            {% for match in session.matches %}
-            {{ match }}
-            {% endfor %}
+
+
+ 
+
          </p>
-         {% endif %}
-         {% with messages = get_flashed_messages() %}
-         {% if messages %}
+         
+   
          <!-- Mismatch, already found, etc. "flashed" from Python -->
-         {% for message in messages %}
-         <p class="message">{{ message }}</p>
-         {% endfor %}
-         {% endif %}
-         {% endwith %}
+
+         <p id="message"></p>
+
+         <p id="response"> </p>
+         <p id = "debug"></p>
       </div>
       <!-- container -->
+         <!-- JavaScript will insert text here -->
+         <script>
+
+            // Suppress normal form submission
+            $("#entry").submit( function(event) {
+               event.preventDefault();
+              });
+
+            var matches_found = [];
+            $("#attempt").keyup(function(event) {
+               var txt = $("#attempt").val();  // Current content of the input field
+               var keycode = event.which;      // They key that just went up
+               var letter = String.fromCharCode(keycode);
+
+               if (! "ABCDEFGHIJKLMNOPQRSTUVWXYZ".includes(letter)) { return }
+               $.getJSON( "/_check", { text: txt, matches: matches_found },
+                          function(data) {
+                           console.log("matches_found=  "+ matches_found)
+                           console.log("injumble= " + data.result.in_jumble);
+                           console.log("matches found in data= " + data.result.matches)
+                           
+                           client_message = "";
+                            
+                           if (data.result.matched & data.result.in_jumble & !(data.result.matches.includes(data.result.inputtext)))
+                              {
+                                 console.log("Matching word = "+ data.result.inputtext);
+                                 data.result.matches.push(data.result.inputtext);
+                              }
+                           else{
+                              if (!data.result.matches.includes(data.result.inputtext)){
+                                 if (!data.result.matched){
+                                    client_message = "Word not in the list";
+                                    console.log("Word not in the list")
+                                 }
+                                 else{
+                                    if (!data.result.in_jumble){
+                                       client_message = "Cannot create from jumble string";
+                                       console.log("Cannot create from jumble string");
+                                    }
+                                 }}
+                              else{
+                                 client_message = "This word was already found";
+                                 console.log("This word was already found")
+                                 }
+                           }
+                           found_string = "";
+                           matches_found = data.result.matches;
+                           for (i=0; i< matches_found.length; i++){
+                              found_string = found_string + matches_found[i] + " ";
+                           }
+                           $("#message").html(client_message);
+                           $("#response").html("Found words: " + found_string);
+                           
+      
+                           if (matches_found.length >= data.result.target_count){
+                              window.location = "/success";
+                           }
+                           }
+                       );
+               });
+         </script>
    </body>
 </html>

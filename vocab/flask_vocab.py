@@ -4,8 +4,9 @@ Flask web site with vocabulary matching game
 from a scrambled string)
 """
 
-import flask
+import flask 
 import logging
+
 
 # Our modules
 from src.letterbag import LetterBag
@@ -79,49 +80,28 @@ def success():
 #   a JSON request handler
 #######################
 
-@app.route("/_check", methods=["POST"])
+@app.route("/_check")
 def check():
-    """
-    User has submitted the form with a word ('attempt')
-    that should be formed from the jumble and on the
-    vocabulary list.  We respond depending on whether
-    the word is on the vocab list (therefore correctly spelled),
-    made only from the jumble letters, and not a word they
-    already found.
-    """
     app.logger.debug("Entering check")
+    
 
     # The data we need, from form and from cookie
-    text = flask.request.form["attempt"]
+    text = flask.request.args.get("text", type=str)
     jumble = flask.session["jumble"]
-    matches = flask.session.get("matches", [])  # Default to empty list
+    matches = flask.request.args.getlist("matches[]", type=str)  # Default to empty list
+    target_count = flask.session["target_count"]
+    print(target_count)
 
     # Is it good?
     in_jumble = LetterBag(jumble).contains(text)
     matched = WORDS.has(text)
 
     # Respond appropriately
-    if matched and in_jumble and not (text in matches):
-        # Cool, they found a new word
-        matches.append(text)
-        flask.session["matches"] = matches
-    elif text in matches:
-        flask.flash("You already found {}".format(text))
-    elif not matched:
-        flask.flash("{} isn't in the list of words".format(text))
-    elif not in_jumble:
-        flask.flash(
-            '"{}" can\'t be made from the letters {}'.format(text, jumble))
-    else:
-        app.logger.debug("This case shouldn't happen!")
-        assert False  # Raises AssertionError
 
-    # Choose page:  Solved enough, or keep going?
-    if len(matches) >= flask.session["target_count"]:
-       return flask.redirect(flask.url_for("success"))
-    else:
-       return flask.redirect(flask.url_for("keep_going"))
-
+    result = {"in_jumble": in_jumble, "inputtext": text, "jumble": jumble,
+              "matches": matches, "matched": matched, "target_count": target_count}
+    return flask.jsonify(result=result)
+        
 
 ###############
 # AJAX request handlers
